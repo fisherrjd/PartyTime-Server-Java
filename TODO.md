@@ -13,15 +13,15 @@
 - [x] Add @Transactional to DropService.cleanupInactiveParties() method
 
 ### Database Optimization
-- [ ] Add database indexes to DropParty entity (world/is_active, is_active/last_drop_at)
+- [x] Add database indexes to DropParty entity (world/is_active, is_active/last_drop_at)
 
 ---
 
 ## 🟡 Medium Priority
 
 ### Configuration Management
-- [ ] Move timeout/cleanup constants to application.properties
-- [ ] Add @ConfigurationProperties or @Value to load configuration from properties file
+- [x] Move timeout/cleanup constants to application.properties
+- [x] Add @ConfigurationProperties or @Value to load configuration from properties file
 
 ### API Improvements
 - [ ] Add pagination support to GET /api/party endpoint
