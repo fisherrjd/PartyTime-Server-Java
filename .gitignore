@@ -39,3 +39,7 @@ out/
 .direnv
 result*
 
+### Environment Variables ###
+.env
+.env.local
+.env.*.local

@@ -1,0 +1,42 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Build outputs
+build/
+.gradle/
+*.jar
+*.war
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Nix/direnv files
+.direnv/
+.envrc
+default.nix
+
+# Environment and secrets
+.env
+*.pem
+*.key
+
+# Database files
+.pg/
+
+# Documentation
+README.md
+TODO.md
+*.md
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

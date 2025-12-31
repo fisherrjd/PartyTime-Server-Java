@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database with pgvector extension
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: partytime-postgres
+    environment:
+      POSTGRES_DB: PartyTime
+      POSTGRES_USER: PartyTime
+      POSTGRES_PASSWORD: PartyTime
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U PartyTime"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PartyTime Spring Boot application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: partytime-app
+    ports:
+      - "8000:8000"
+    environment:
+      # Database connection
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/PartyTime
+      SPRING_DATASOURCE_USERNAME: PartyTime
+      SPRING_DATASOURCE_PASSWORD: PartyTime
+
+      # JPA/Hibernate settings
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+
+      # Application settings
+      SERVER_PORT: 8000
+
+      # Party configuration
+      PARTY_DUPLICATE_WINDOW_MILLIS: 500
+      PARTY_TIMEOUT_MINUTES: 5
+      PARTY_CLEANUP_INTERVAL_MILLIS: 120000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
