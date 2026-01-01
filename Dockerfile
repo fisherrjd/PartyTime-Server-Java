@@ -1,45 +1,51 @@
-# Multi-stage build for PartyTime Server
+# Multi-stage build for PartyTime Spring Boot application
 # Stage 1: Build the application
-FROM gradle:8.11-jdk25-alpine AS builder
+FROM azul/zulu-openjdk:25 AS builder
 
+# Set working directory
 WORKDIR /app
 
-# Copy gradle wrapper and build files
-COPY gradlew gradlew.bat ./
-COPY gradle ./gradle
-COPY build.gradle settings.gradle ./
+# Copy Gradle wrapper and build files
+COPY gradlew .
+COPY gradle gradle/
+COPY build.gradle .
+COPY settings.gradle .
 
-# Download dependencies (this layer is cached unless build files change)
-RUN ./gradlew dependencies --no-daemon || true
+# Make gradlew executable
+RUN chmod +x gradlew
+
+# Download dependencies (cached layer if dependencies don't change)
+RUN ./gradlew dependencies --no-daemon
 
 # Copy source code
-COPY src ./src
+COPY src src/
 
-# Build the application JAR
-RUN ./gradlew bootJar --no-daemon
+# Build the application (skip tests for faster builds, run tests separately in CI)
+RUN ./gradlew bootJar --no-daemon -x test
 
 # Stage 2: Create the runtime image
-FROM azul/zulu-openjdk-alpine:25-jre
+FROM azul/zulu-openjdk:25-jre
 
+# Set working directory
 WORKDIR /app
 
-# Create a non-root user for security
-RUN addgroup -S spring && adduser -S spring -G spring
+# Create non-root user for security
+RUN groupadd -r spring && useradd -r -g spring spring
 
-# Copy the built JAR from the builder stage
+# Copy the built JAR from builder stage
 COPY --from=builder /app/build/libs/*.jar app.jar
 
-# Set ownership to non-root user
-RUN chown -R spring:spring /app
+# Change ownership to non-root user
+RUN chown spring:spring app.jar
 
 # Switch to non-root user
 USER spring
 
-# Expose the application port
+# Expose application port
 EXPOSE 8000
 
-# JVM optimizations for containers
-ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom"
+# Set JVM options for containerized environment
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0"
 
 # Run the application
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

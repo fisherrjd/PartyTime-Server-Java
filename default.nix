@@ -17,7 +17,7 @@ let
     ];
     java = [
       gradle
-      zulu
+      zulu25
     ];
     scripts = pkgs.lib.attrsets.attrValues scripts;
   };

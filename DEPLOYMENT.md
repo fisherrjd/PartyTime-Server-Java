@@ -1,222 +1,110 @@
 # PartyTime Server - Deployment Guide
 
-This guide explains how to build and deploy the PartyTime Server using containers (Docker or Podman).
-
-## What This Setup Does
-
-This project includes a complete containerized deployment setup:
-
-1. **Dockerfile** - Builds your Spring Boot application into a container image
-2. **docker-compose.yaml** - Orchestrates both your app and PostgreSQL database
-3. **Makefile** - Provides easy commands to build, run, and manage containers
+This guide explains how to build and deploy the PartyTime Server using Podman.
 
 ## Prerequisites
 
-You need either **Docker** or **Podman** installed:
+Install Podman and podman-compose:
 
-### For Docker:
 ```bash
-# macOS (using Homebrew)
-brew install docker docker-compose
+# Fedora/RHEL/CentOS
+sudo dnf install podman podman-compose
 
-# Or install Docker Desktop from https://www.docker.com/products/docker-desktop
-```
+# Ubuntu/Debian
+sudo apt install podman
+pip install podman-compose
 
-### For Podman (recommended for macOS):
-```bash
-# macOS (using Homebrew)
+# macOS
 brew install podman podman-compose
-
-# Initialize podman machine
 podman machine init
 podman machine start
 ```
 
 ## Quick Start
 
-The Makefile automatically detects whether you're using Docker or Podman.
-
-### 1. Build and Start Everything
+### Start Everything
 ```bash
-make up
+podman-compose up -d
 ```
 
 This will:
-- Build your Spring Boot application into a container
-- Start PostgreSQL 16 with pgvector extension
+- Build your Spring Boot application
+- Start PostgreSQL 16 database
 - Start your application
 - Connect them together
 
-### 2. View Logs
+### View Logs
 ```bash
-# All logs
-make logs
-
-# Just application logs
-make logs-app
-
-# Just database logs
-make logs-db
+podman-compose logs -f
 ```
 
-### 3. Check Status
+### Stop Everything
 ```bash
-make ps
+podman-compose down
 ```
 
-### 4. Access Your Application
+## Access Your Application
+
 - Application: http://localhost:8000
 - Database: localhost:5432 (username: PartyTime, password: PartyTime, database: PartyTime)
-
-### 5. Stop Everything
-```bash
-make down
-```
 
 ## Common Commands
 
 ```bash
-make help              # Show all available commands
-make build             # Build the application image
-make up                # Start all services
-make down              # Stop all services
-make restart           # Restart all services
-make logs              # View logs
-make ps                # Show running containers
-make clean             # Remove everything including data
-make rebuild           # Rebuild and restart
-make shell-app         # Open shell in application container
-make shell-db          # Open PostgreSQL shell
-make package           # Save image as .tar file for deployment
+# Start services
+podman-compose up -d
+
+# View logs
+podman-compose logs -f app
+podman-compose logs -f postgres
+
+# Stop services
+podman-compose down
+
+# Rebuild after code changes
+podman-compose up -d --build
+
+# Remove everything including data
+podman-compose down -v
 ```
 
-## Understanding the Setup
+## Running Just the Database
 
-### Multi-Stage Build (Dockerfile)
-
-The Dockerfile uses a **multi-stage build**:
-
-1. **Builder Stage**: Uses Gradle to compile your Java code
-   - Caches dependencies for faster rebuilds
-   - Builds the Spring Boot JAR
-
-2. **Runtime Stage**: Creates a minimal image with just the JRE
-   - Uses Azul Zulu JDK 25 (matches your Nix environment)
-   - Runs as non-root user for security
-   - Optimized JVM settings for containers
-
-### Service Orchestration (docker-compose.yaml)
-
-The compose file defines two services:
-
-1. **postgres**: PostgreSQL 16 with pgvector extension
-   - Stores data in a persistent volume
-   - Has health checks to ensure it's ready before the app starts
-
-2. **app**: Your Spring Boot application
-   - Waits for database to be healthy before starting
-   - Configured via environment variables
-   - Automatically restarts if it crashes
-
-### Development vs Production
-
-**Development** (what you're doing now):
-- Use your Nix environment (`nix-shell`)
-- Local PostgreSQL via `pg_shell` script
-- Direct Gradle builds with `./gradlew`
-
-**Production/Deployment** (containers):
-- Use `make up` to start everything
-- Isolated environment, consistent across machines
-- Easy to deploy to servers or cloud platforms
-
-## Deployment Scenarios
-
-### Scenario 1: Deploy to a Linux Server
-
-1. Copy your code to the server
-2. Install Docker or Podman on the server
-3. Run `make up`
-4. Set up a reverse proxy (nginx) to handle HTTPS
-
-### Scenario 2: Save Image and Deploy Elsewhere
+If you want to develop locally but use a containerized database:
 
 ```bash
-# On your machine: build and package
-make package
+# Start only PostgreSQL
+podman-compose up -d postgres
 
-# This creates: partytime-server-latest.tar
-
-# Transfer to another machine and load it
-make load
-make up
+# Run your app locally
+./gradlew bootRun
 ```
 
-### Scenario 3: Push to a Container Registry
+## How It Works
 
-```bash
-# Build image
-make build
+The `Dockerfile` uses a multi-stage build:
+1. **Builder stage**: Compiles your Java code with Gradle
+2. **Runtime stage**: Creates a minimal image with just the JRE
 
-# Tag for your registry
-podman tag partytime-server:latest registry.example.com/partytime-server:latest
-
-# Push to registry
-podman push registry.example.com/partytime-server:latest
-```
-
-## Configuration
-
-Environment variables are set in `docker-compose.yaml`. To override them:
-
-1. Create a `.env` file (not tracked by git)
-2. Add variables like:
-   ```
-   POSTGRES_PASSWORD=my-secure-password
-   SERVER_PORT=8080
-   ```
+The `docker-compose.yaml` defines:
+1. **postgres**: PostgreSQL 16 with persistent data storage
+2. **app**: Your Spring Boot application configured to connect to the database
 
 ## Troubleshooting
 
-### Podman on macOS
-If containers can't communicate:
+### View what's running
 ```bash
-podman machine stop
-podman machine start
+podman ps
 ```
 
-### Port Already in Use
-If port 8000 or 5432 is already in use, edit `docker-compose.yaml` to change the port mapping:
-```yaml
-ports:
-  - "8080:8000"  # Use 8080 instead of 8000
-```
-
-### Database Connection Issues
-Check that the database is healthy:
+### Check logs if something fails
 ```bash
-make shell-db
-# If this works, database is running
+podman-compose logs app
+podman-compose logs postgres
 ```
 
-### Application Won't Start
-Check logs:
+### Rebuild from scratch
 ```bash
-make logs-app
+podman-compose down -v
+podman-compose up -d --build
 ```
-
-## Next Steps for Learning
-
-1. Try modifying code and running `make rebuild` to see changes
-2. Experiment with different PostgreSQL configurations
-3. Learn about container registries (Docker Hub, GitHub Container Registry)
-4. Explore Kubernetes for more advanced orchestration
-5. Set up CI/CD pipelines to automatically build and deploy
-
-## Files Created
-
-- `Dockerfile` - How to build your application image
-- `docker-compose.yaml` - How to run your full stack
-- `.dockerignore` - What to exclude from the build
-- `Makefile` - Convenient commands for common tasks
-- `DEPLOYMENT.md` - This file

@@ -10,11 +10,11 @@ services:
       POSTGRES_USER: PartyTime
       POSTGRES_PASSWORD: PartyTime
     ports:
-      - "5432:5432"
+      - '7071:7071'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U PartyTime"]
+      test: ['CMD-SHELL', 'pg_isready -U PartyTime']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,7 +26,7 @@ services:
       dockerfile: Dockerfile
     container_name: partytime-app
     ports:
-      - "8000:8000"
+      - '8000:8000'
     environment:
       # Database connection
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/PartyTime
